@@ -1,0 +1,270 @@
+# %% [markdown]
+# <a href="https://colab.research.google.com/github/yashasvimisra2798/Care-Demia/blob/main/breast_cancer_detection.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+
+# %%
+#to keep the plot in one place
+ 
+
+
+#Importing models from scikit learn module
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import ShuffleSplit
+from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import KFold   #For K-fold cross validation
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier, export_graphviz
+from sklearn import metrics
+
+# %%
+df = pd.read_csv(r"C:\\Users\Kimura Houston\Desktop\Project\Breast Cancer Data\breast_cancer.csv")
+df.head()
+
+# %%
+
+
+# %%
+df.drop('id',axis=1,inplace=True)
+df.drop('Unnamed: 32',axis=1,inplace=True)
+# size of the dataframe
+len(df)
+
+# %%
+df.diagnosis.unique()
+
+# %%
+df['diagnosis'] = df['diagnosis'].map({'M':1,'B':0})
+df.head()
+
+# %%
+df.describe()
+
+# %%
+df.describe()
+plt.hist(df['diagnosis'])
+plt.title('Diagnosis (M=1 , B=0)')
+plt.show()
+
+# %%
+features_mean=list(df.columns[1:11])
+# split dataframe into two based on diagnosis
+dfM=df[df['diagnosis'] == 1]
+dfB=df[df['diagnosis'] == 0]
+
+# %%
+#Stack the data
+plt.rcParams.update({'font.size': 8})
+fig, axes = plt.subplots(nrows=5, ncols=2, figsize=(8,10))
+axes = axes.ravel()
+for idx,ax in enumerate(axes):
+    ax.figure
+    binwidth= (max(df[features_mean[idx]]) - min(df[features_mean[idx]]))/50
+    ax.hist([dfM[features_mean[idx]],dfB[features_mean[idx]]], bins=np.arange(min(df[features_mean[idx]]), max(df[features_mean[idx]]) + binwidth, binwidth) , alpha=0.5,stacked=True, density = True, label=['M','B'],color=['r','g'])
+    ax.legend(loc='upper right')
+    ax.set_title(features_mean[idx])
+plt.tight_layout()
+plt.show()
+
+# %%
+traindf, testdf = train_test_split(df, test_size = 0.3)
+
+# %%
+prediction_vars = ['radius_mean', 'texturemean', 'perimeter_mean', 'area_mean','smoothness_mean', 'compactness_mean',	'concavity_mean', 'concave points_mean', 'symmetry_mean', 'fractal_dimension_mean']
+
+# %% [markdown]
+# 
+
+# %%
+#Generic function for making a classification model and accessing the performance. 
+def classification_model(model, data, predictors, outcome):
+  #Fit the model:
+  model.fit(data[predictors],data[outcome])
+  #Make predictions on training set:
+  predictions = model.predict(data[predictors])
+  
+  #Print accuracy
+  accuracy = metrics.accuracy_score(predictions,data[outcome])
+  print("Accuracy : %s" % "{0:.3%}".format(accuracy))
+
+  #Perform k-fold cross-validation with 5 folds
+  kf = KFold(n_splits=5)
+  error = []
+  for train, test in kf.split(data[predictors]):
+    
+    # Filter training data
+    train_predictors = (data[predictors].iloc[train,:])
+    
+    # The target we're using to train the algorithm.
+    train_target = data[outcome].iloc[train]
+    
+    # Training the algorithm using the predictors and target.
+    model.fit(train_predictors, train_target)
+
+    #Record error from each cross-validation run
+    error.append(model.score(data[predictors].iloc[test,:], data[outcome].iloc[test]))
+    
+    print("Cross-Validation Score : %s" % "{0:.3%}".format(np.mean(error)))
+    
+  #Fit the model again so that it can be refered outside the function:
+  model.fit(data[predictors],data[outcome]) 
+
+# %%
+# Use all the features of the nucleus
+outcome_var='diagnosis'
+predictor_var = features_mean
+model = RandomForestClassifier(n_estimators=100,min_samples_split=25, max_depth=7, max_features=2)
+classification_model(model, traindf, predictor_var, outcome_var)
+
+# %%
+import pickle
+filename = 'model.pkl'
+pickle.dump(model, open(filename, 'wb'))
+# load the model from disk
+loaded_model = pickle.load(open(filename, 'rb'))
+
+# %%
+
+
+# %%
+
+import tkinter as tk
+from PIL import ImageTk, Image  
+from functools import partial
+
+
+# %%
+
+root= tk.Tk()
+
+root.title('Breast Cancer Prediction App')
+
+
+bg = ImageTk.PhotoImage(Image.open('C:\\Users\Kimura Houston\Desktop\Project\Breast Cancer Data\Cancer.jpg'), master=root)
+label = tk.Label(root, image=bg)
+label.place(x = 0,y = 0)
+
+label=tk.Label(root, text="Input patient's biopsy results.", fg='#ff007f', font=("Arial Black", 16))
+label.pack(padx=100, pady=20) 
+
+canvas1 = tk.Canvas(root, width = 500, height = 400)
+canvas1.pack()
+
+# Worst Radius
+label1 = tk.Label(root, text=' Worst Radius:')
+canvas1.create_window(100, 100, window=label1)
+
+entry1 = tk.Entry (root)
+canvas1.create_window(270, 100, window=entry1)
+
+# Concave mean
+label2 = tk.Label(root, text='Concave mean     ')
+canvas1.create_window(120, 120, window=label2)
+
+entry2 = tk.Entry (root)
+canvas1.create_window(270, 120, window=entry2)
+
+# Perimeter mean
+label3 = tk.Label(root, text=' Perimeter mean: ')
+canvas1.create_window(140, 140, window=label3)
+
+entry3 = tk.Entry (root)
+canvas1.create_window(270, 140, window=entry3)
+
+# Area mean
+label4 = tk.Label(root, text=' Area mean:                               ')
+canvas1.create_window(160, 160, window=label4)
+
+
+entry4 = tk.Entry (root)
+canvas1.create_window(270, 160, window=entry4)
+
+# Area se
+label5 = tk.Label(root, text=' Smoothness Mean:                               ')
+canvas1.create_window(160, 180, window=label5)
+
+entry5 = tk.Entry (root)
+canvas1.create_window(270, 180, window=entry5)
+
+# Compactness
+label6 = tk.Label(root, text='Compactness Mean:                               ')
+canvas1.create_window(180, 200, window=label6)
+
+entry6 = tk.Entry (root)
+canvas1.create_window(270, 200, window=entry6)
+
+# Concavity Mean
+label7 = tk.Label(root, text='Concavity Mean:                               ')
+canvas1.create_window(180, 220, window=label7)
+
+entry7 = tk.Entry (root)
+canvas1.create_window(270, 220, window=entry7)
+
+# Concave points Mean
+label8 = tk.Label(root, text='Concave points Mean:                               ')
+canvas1.create_window(180, 240, window=label8)
+
+entry8 = tk.Entry (root)
+canvas1.create_window(270, 240, window=entry8)
+
+# Symmetry  Mean
+label9 = tk.Label(root, text='Symmetry Mean:                               ')
+canvas1.create_window(160, 260, window=label9)
+
+entry9 = tk.Entry (root)
+canvas1.create_window(270, 260, window=entry9)
+
+# Fractal Dimension Mean
+label10 = tk.Label(root, text='Fractal Dimension Mean:                               ')
+canvas1.create_window(180, 280, window=label10)
+
+entry10 = tk.Entry (root)
+canvas1.create_window(270, 280, window=entry10)
+
+def values(): 
+
+    global radius_mean
+    radius_mean = float(entry1.get())
+
+    global texture_mean
+    texture_mean = float(entry2.get())
+
+    global perimeter_mean
+    perimeter_mean = float(entry3.get()) 
+    
+    global area_mean
+    area_mean = float(entry4.get()) 
+    
+    global smoothness_mean
+    smoothness_mean = float(entry5.get()) 
+    
+    global compactness_mean
+    compactness_mean = float(entry6.get())
+
+    global concavity_mean
+    concavity_mean = float(entry7.get())
+
+    global concave_points_mean
+    concave_points_mean = float(entry8.get())
+
+    global symmetry_mean
+    symmetry_mean = float(entry9.get())
+
+    global fractal_dimension_mean
+    fractal_dimension_mean = float(entry10.get())
+
+   
+
+    Prediction_result  = ('  Predicted Result: ', model.predict([[radius_mean, texture_mean, perimeter_mean, area_mean, smoothness_mean, compactness_mean,	concavity_mean, concave_points_mean, symmetry_mean, fractal_dimension_mean]]))
+    label_Prediction = tk.Label(root, text= Prediction_result, bg='sky blue')
+    canvas1.create_window(270, 380, window=label_Prediction)
+
+button1 = tk.Button (root, text='      Predict      ',command=values, bg='green', fg='white', font=11)
+canvas1.create_window(270, 350, window=button1)
+ 
+root.mainloop()
+    
+
+# %% [markdown]
+# 
+
+
